@@ -10,3 +10,6 @@ dependencies = [
     "playwright>=1.59.0",
     "playwright-stealth>=2.0.3",
 ]
+
+[tool.setuptools]
+packages = ["mcp_server", "shared"]

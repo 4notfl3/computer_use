@@ -1,7 +1,5 @@
-# mcp/tools.py
+def register_tools(mcp, browser_manager):
 
-def register_tools(mcp, browser_manager, workspace):
-    
     @mcp.tool()
     async def browser_navigate(url: str) -> str:
         """打开或跳转到指定网址"""

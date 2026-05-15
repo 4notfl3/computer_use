@@ -4,7 +4,9 @@
 
 ## 项目概述
 
-这是一个 Python MCP (Model Context Protocol) 服务器，使用 FastMCP 和 Playwright 提供浏览器自动化能力。通过 MCP 接口暴露导航、点击、填充表单和读取页面内容等工具。
+这是一个 Python MCP (Model Context Protocol) 服务器项目，使用 FastMCP 和 Playwright 提供浏览器自动化能力。通过 MCP 接口暴露导航、点击、填充表单和读取页面内容等工具。
+
+每个 MCP server 是独立进程，遵循 engine + tools + server 三层结构。
 
 ## 构建/检查/测试命令
 
@@ -13,14 +15,16 @@
 # 创建虚拟环境并安装依赖
 uv sync
 
-# 安装 Playwright 浏览器（首次运行必须）
-playwright install chromium
+# 无需额外安装浏览器，代码使用 channel="msedge" 直接调用系统已装的 Edge
 ```
 
 ### 运行服务器
 ```bash
-# 运行 MCP 服务器
-uv run python main.py
+# 运行 browser MCP 服务器
+uv run mcp_server/browser/server.py
+
+# 运行 weather MCP 服务器
+uv run mcp_server/weather/server.py
 ```
 
 ### 测试
@@ -38,7 +42,7 @@ pytest tests/test_browser.py::test_navigate
 pytest -v
 
 # 带覆盖率报告
-pytest --cov=mcp tests/
+pytest --cov=mcp_server tests/
 ```
 
 ### 代码检查和类型检查
@@ -60,7 +64,7 @@ mypy .
 
 ### 导入
 - 标准库导入在前，第三方库导入在中，本地模块导入在后
-- 本地模块使用绝对导入：`from mcp.browser_engine import BrowserManager`
+- 本地模块使用绝对导入：`from mcp_server.browser.engine import BrowserManager`
 - 各组导入之间用空行分隔
 - 每组内按字母顺序排序
 
@@ -71,8 +75,8 @@ from pathlib import Path
 from fastmcp import FastMCP
 from playwright.async_api import async_playwright
 
-from mcp.browser_engine import BrowserManager
-from mcp.tools import register_tools
+from mcp_server.browser.engine import BrowserManager
+from mcp_server.browser.tools import register_tools
 ```
 
 ### 格式化
@@ -155,19 +159,32 @@ async def ensure_browser(self):
 ### 项目结构
 ```
 computer_use/
-├── main.py              # 入口文件，MCP 服务器配置
-├── mcp/
-│   ├── browser_engine.py  # BrowserManager 类
-│   └── tools.py           # MCP 工具定义
-├── workspace/           # 浏览器下载/工作目录
-├── pyproject.toml       # 项目配置
-└── .python-version      # Python 版本 (3.10)
+├── mcp_server/              # 所有 MCP server 的根目录
+│   ├── browser/             # 浏览器 MCP server
+│   │   ├── server.py        # FastMCP 实例 + 启动逻辑
+│   │   ├── engine.py        # BrowserManager 类
+│   │   ├── tools.py         # MCP 工具定义
+│   │   └── __init__.py
+│   ├── weather/             # 天气 MCP server（待开发）
+│   │   └── __init__.py
+├── shared/                  # 多个 server 共用的代码
+│   └── __init__.py
+├── workspace/               # 工作目录
+├── tests/                   # 测试目录
+├── pyproject.toml           # 项目配置
+└── .python-version          # Python 版本 (3.10)
 ```
 
+### 新 Server 添加规范
+每个 MCP server 遵循三层结构：
+- `engine.py` — 核心业务逻辑，不依赖 FastMCP
+- `tools.py` — 用 `@mcp.tool()` 装饰器包装 engine 方法为 MCP 工具
+- `server.py` — 创建 FastMCP 实例，注册 tools，启动 server
+
 ### 依赖
-- `fastmcp` - MCP 服务器框架
-- `playwright` - 浏览器自动化
-- `playwright-stealth` - Playwright 隐身模式
+- `fastmcp` — MCP 服务器框架
+- `playwright` — 浏览器自动化
+- `playwright-stealth` — Playwright 隐身模式
 
 ### MCP 工具指南
 - 每个工具应该是简单的异步函数，使用 `@mcp.tool()` 装饰器
@@ -183,17 +200,18 @@ computer_use/
 
 ## 注意事项
 - 代码库使用中文注释和消息，请保持一致
-- 这是 MCP 服务器项目，工具应尽可能保持无状态
+- 这是 MCP 服务器项目，每个 server 是独立进程
 - 浏览器实例由 BrowserManager 管理，采用延迟初始化
 
-
 ## Agent 的 MCP 配置文件
-```python
-"my-browser-mcp": {
-  "disabled": false,
-  "timeout": 60,
-  "command": "uv",
-  "args": ["run", "main.py"],
-  "transportType": "stdio"
+```json
+{
+  "my-browser-mcp": {
+    "disabled": false,
+    "timeout": 60,
+    "command": "uv",
+    "args": ["run", "mcp_server/browser/server.py"],
+    "transportType": "stdio"
+  }
 }
 ```

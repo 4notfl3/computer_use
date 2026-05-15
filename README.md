@@ -1,56 +1,65 @@
 # Computer Use
 
-基于 MCP 的浏览器自动化服务器，让 AI 能够控制浏览器完成任务。
+MCP 服务器项目，为智能体提供浏览器自动化等能力。
 
-## 功能
+## 项目结构
 
-- 🌐 **页面导航** - 打开任意网址
-- 🖱️ **点击操作** - 通过 CSS 选择器点击页面元素
-- ⌨️ **表单填充** - 在输入框中填写内容
-- 📖 **内容读取** - 获取页面文本内容
+每个 MCP server 是独立进程，遵循三层结构：
 
-## 安装
+```
+mcp_server/
+├── browser/          # 浏览器自动化 server
+│   ├── server.py     # 入口：创建 FastMCP 实例，启动服务
+│   ├── engine.py     # 核心：业务逻辑（不依赖 FastMCP）
+│   ├── tools.py      # 接口：用 @mcp.tool() 包装 engine 方法
+│   └── __init__.py
+├── weather/          # 天气 server（待开发）
+├── shared/           # 多 server 共用代码
+```
+
+新增 server 只需在 `mcp_server/` 下按同样结构添加子目录。
+
+## 快速开始
 
 ```bash
-# 安装依赖
 uv sync
-
-# 安装浏览器
-playwright install chromium
+uv pip install -e .
 ```
 
 ## 运行
 
 ```bash
-python main.py
+uv run mcp_server/browser/server.py
 ```
 
-## 可用工具
+## 测试
+```
+npx @modelcontextprotocol/inspector uv run mcp_server/browser/server.py   
+ 
+```
 
-| 工具名 | 说明 | 参数 |
-|--------|------|------|
-| `browser_navigate` | 打开网页 | `url`: 网址 |
-| `browser_click` | 点击元素 | `selector`: CSS 选择器 |
+## Browser 工具
+
+| 工具 | 说明 | 参数 |
+|------|------|------|
+| `browser_navigate` | 打开网页 | `url` |
+| `browser_click` | 点击元素 | `selector` (CSS) |
 | `browser_fill` | 填写表单 | `selector`, `text` |
 | `browser_read_content` | 读取页面内容 | 无 |
 
-## 示例
+## Host 配置示例
 
-```python
-# 导航到网页
-browser_navigate(url="https://example.com")
-
-# 点击按钮
-browser_click(selector="#submit-button")
-
-# 填写输入框
-browser_fill(selector="#username", text="admin")
-
-# 读取页面内容
-browser_read_content()
+```json
+{
+  "my-browser-mcp": {
+    "command": "uv",
+    "args": ["run", "mcp_server/browser/server.py"],
+    "transportType": "stdio"
+  }
+}
 ```
 
 ## 依赖
 
-- [FastMCP](https://github.com/jlowin/fastmcp) - MCP 服务器框架
-- [Playwright](https://playwright.dev/python/) - 浏览器自动化
+- [FastMCP](https://github.com/jlowin/fastmcp) — MCP 服务器框架
+- [Playwright](https://playwright.dev/python/) — 浏览器自动化
