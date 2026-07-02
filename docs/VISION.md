@@ -1,25 +1,33 @@
-# Vision MCP
+# Vision MCP Server
 
-屏幕截图和图像分析工具。
+屏幕截图和 AI 图像分析。
 
 ## 工具
 
-### vision_screenshot
-截图当前屏幕，返回保存路径。
+| 工具 | 说明 |
+|------|------|
+| `vision_screenshot` | 截图当前屏幕，返回保存路径 |
+| `vision_analyze` | 分析指定图片内容 |
 
-### vision_analyze
-分析指定图片内容。
-- `image_path`: 图片路径
-- `question`: 要问的问题
+## 配置
+
+需要创建 `.env` 文件：
+```ini
+DASHSCOPE_API_KEY=your_api_key_here
+```
+
+前往 [阿里云百炼平台](https://bailian.console.aliyun.com) 获取 API Key。
 
 ## 使用示例
 
-```
-vision_screenshot(filename="my.png")
-vision_analyze("workspace/screenshots/my.png", "描述这张图片")
-```
+```python
+# 截图
+result = await host.call_tool("vision_screenshot", {"filename": "my.png"})
 
-## 依赖
-
-- `.env` 文件需要配置 `DASHSCOPE_API_KEY`
-- 使用阿里云 Qwen3.5-122b-A10B 模型
+# 分析图片
+result = await host.call_tool("vision_analyze", {
+    "image_path": "workspace/screenshots/my.png",
+    "question": "描述这张图片",
+    "delete_after": True,
+})
+```

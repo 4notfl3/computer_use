@@ -1,81 +1,85 @@
 # Computer Use
 
-MCP 服务器项目，为智能体提供浏览器自动化、屏幕截图和图像分析等能力。
+MCP 服务器项目：让 AI 智能体可以**操控浏览器**和**看懂屏幕截图**。
 
-## 项目结构
+基于 [MCP 协议](https://modelcontextprotocol.io)，兼容 Claude Desktop、自定义 Agent 等。
 
-```
-mcp_server/
-├── browser/          # 浏览器自动化
-│   ├── main.py       # 入口
-│   ├── engine.py     # 核心逻辑
-│   └── tools.py      # MCP 工具
-├── vision/           # 屏幕截图和图像分析
-│   ├── main.py
-│   ├── manager.py    # VisionManager
-│   └── tools.py
-└── shared/           # 共用代码
-```
+---
+
+## 功能
+
+| 工具 | 说明 |
+|------|------|
+| `browser_navigate` | 打开网页 |
+| `browser_click` | 点击页面元素 |
+| `browser_fill` | 输入文本 |
+| `browser_read_content` | 读取页面内容 |
+| `vision_screenshot` | 截取屏幕 |
+| `vision_analyze` | AI 分析图片内容 |
+
+---
 
 ## 快速开始
 
 ```bash
+# 1. 安装
 uv sync
+
+# 2. 配置（Vision 需要）
+echo DASHSCOPE_API_KEY=你的key > .env
+
+# 3. [推荐] 一键启动所有服务
+uv run python -m mcp_server.launcher all
 ```
 
-## 运行
+## 在代码中使用
 
-```bash
-# browser MCP
-uv run mcp_server/browser/main.py
+```python
+from host.agent_host import AgentHost
 
-# vision MCP
-uv run mcp_server/vision/main.py
+async with AgentHost() as host:
+    await host.connect_all()
+    await host.call_tool("browser_navigate", {"url": "https://example.com"})
+    r = await host.call_tool("browser_read_content", {})
+    print(r.content[0]["text"][:200])
 ```
 
-## 工具
-
-### Browser
-
-| 工具 | 说明 | 参数 |
-|------|------|------|
-| `browser_navigate` | 打开网页 | `url` |
-| `browser_click` | 点击元素 | `selector` (CSS) |
-| `browser_fill` | 填写表单 | `selector`, `text` |
-| `browser_read_content` | 读取页面内容 | - |
-
-### Vision
-
-| 工具 | 说明 | 参数 |
-|------|------|------|
-| `vision_screenshot` | 屏幕截图 | `filename` (可选) |
-| `vision_analyze` | 分析图片 | `image_path`, `question` |
+---
 
 ## Claude Desktop 配置
 
 ```json
 {
-  "browser-mcp": {
+  "computer-use-mcp": {
     "command": "uv",
-    "args": ["run", "mcp_server/browser/main.py"],
-    "transportType": "stdio"
-  },
-  "vision-mcp": {
-    "command": "uv",
-    "args": ["run", "mcp_server/vision/main.py"],
+    "args": ["run", "python", "-m", "mcp_server.combined"],
     "transportType": "stdio"
   }
 }
 ```
 
-## 依赖
+---
 
-- FastMCP — MCP 服务器框架
-- Playwright — 浏览器自动化
-- Pillow — 截图
-- OpenAI — AI 图像分析（阿里云 Qwen）
+## 项目结构
 
-## 环境变量
+```
+computer_use/
+├── mcp_server/     # 服务器
+│   ├── combined.py # 一键启动所有工具
+│   ├── browser/    # 浏览器自动化
+│   └── vision/     # 截图 + AI 分析
+├── host/           # Host 客户端
+├── shared/         # 共享基础设施
+└── workspace/      # 截图文件等
+```
 
-`.env` 文件需要配置：
-- `DASHSCOPE_API_KEY` — 阿里云 API 密钥（用于 vision 图片分析）
+---
+
+## 环境要求
+
+- Windows（PIL 截图依赖）
+- Python >= 3.10, uv
+- Microsoft Edge（浏览器自动化）
+- 阿里云 API Key（截图分析）
+
+开发者详见 [AGENTS.md](./AGENTS.md)。

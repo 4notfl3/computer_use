@@ -1,29 +1,33 @@
-# mcp_server/vision/tools.py
+"""Vision MCP 工具注册 — 将 VisionManager 方法暴露为 MCP tools"""
 
-from .manager import VisionManager
+from __future__ import annotations
 
-def register_tools(mcp, vision_manager: VisionManager):
-    """
-    注册 Vision 相关的工具到 MCP Server
-    """
+from fastmcp import FastMCP
+
+from mcp_server.vision.manager import VisionManager
+
+
+def register_tools(mcp: FastMCP, vision: VisionManager) -> None:
+    """将 vision 的截图和分析功能注册为 MCP 工具"""
 
     @mcp.tool()
     def vision_screenshot(filename: str = "") -> str:
+        """对当前屏幕截图。
+
+        若不提供文件名则自动生成（如 screen_1719000000.png）。
+        返回保存的完整文件路径。
         """
-        对当前屏幕进行截图。
-        如果不提供文件名，将自动生成一个。
-        返回保存的文件路径。
-        """
-        return vision_manager.take_screenshot(filename)
+        return vision.take_screenshot(filename)
 
     @mcp.tool()
-    def vision_analyze(image_path: str, question: str) -> str:
+    def vision_analyze(
+        image_path: str, question: str, delete_after: bool = False
+    ) -> str:
+        """分析指定路径的图片内容。
+
+        Args:
+            image_path: 图片文件路径（绝对或相对于截图目录）
+            question: 你想问关于这张图片的问题
+            delete_after: 分析后是否自动删除图片（默认 False 保留）
         """
-        分析指定路径的图片内容。
-        参数:
-        - image_path: 截图保存的路径（例如 workspace/screenshots/xxx.png）
-        - question: 你想问关于这张图的什么问题
-        """
-        # 这里我们构建了一个上下文：图片 + 用户的问题
-        # 直接交给 Manager 去调用 AI
-        return vision_manager.analyze_image(image_path, question)
+        return vision.analyze_image(image_path, question, delete_after=delete_after)

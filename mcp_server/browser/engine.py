@@ -1,64 +1,136 @@
+"""BrowserManager — Playwright 驱动的浏览器自动化引擎
+
+纯业务逻辑，零 MCP 框架依赖，可独立测试。
+"""
+
+from __future__ import annotations
+
 import os
+from typing import Any
 
 from playwright.async_api import async_playwright
+from playwright.async_api._generated import Browser, BrowserContext, Page, Playwright
+
+from shared.config import BROWSER_CHANNEL, BROWSER_HEADLESS, WORKSPACE_DIR
+
+
+class BrowserError(Exception):
+    """浏览器操作异常"""
 
 
 class BrowserManager:
-    def __init__(self):
-        self.browser = None
-        self.context = None
-        self.page = None
-        self.playwright = None
-        self.user_data_dir = os.path.join(os.getcwd(), "my_automation_profile")
+    """管理 Playwright 浏览器实例的生命周期和操作。
 
-    async def ensure_browser(self):
-        """确保浏览器已启动，如果没有则启动"""
-        if self.browser is None:
-            self.playwright = await async_playwright().start()
+    支持延迟初始化：首次调用工具时自动启动浏览器。
+    使用 async context manager 或手动调用 close() 释放资源。
+    """
 
-        if self.context and self.context.is_closed():
-            self.context = None
-            self.page = None
+    def __init__(
+        self,
+        *,
+        channel: str = BROWSER_CHANNEL,
+        headless: bool = BROWSER_HEADLESS,
+        user_data_dir: str | None = None,
+    ) -> None:
+        self._channel = channel
+        self._headless = headless
+        self._user_data_dir = user_data_dir or os.path.join(
+            WORKSPACE_DIR, "browser_profile"
+        )
 
-        if self.context is None:
-            self.browser = await self.playwright.chromium.launch(
-                channel="msedge", headless=False
+        self._playwright: Playwright | None = None
+        self._browser: Browser | None = None
+        self._context: BrowserContext | None = None
+        self._page: Page | None = None
+
+    # -- 生命周期 --
+
+    async def __aenter__(self) -> "BrowserManager":
+        return self
+
+    async def __aexit__(self, *args: Any) -> None:
+        await self.close()
+
+    async def ensure_browser(self) -> None:
+        """确保浏览器已启动；若未启动则自动启动。"""
+        if self._playwright is None:
+            self._playwright = await async_playwright().start()
+
+        if self._context is not None and self._context.is_closed():
+            self._context = None
+            self._page = None
+
+        if self._context is None:
+            os.makedirs(self._user_data_dir, exist_ok=True)
+            self._browser = await self._playwright.chromium.launch(
+                channel=self._channel,
+                headless=self._headless,
             )
-            self.context = await self.browser.new_context()
-            self.page = await self.context.new_page()
+            self._context = await self._browser.new_context()
+            self._page = await self._context.new_page()
+
+    async def close(self) -> None:
+        """释放所有浏览器资源。"""
+        if self._context is not None:
+            try:
+                await self._context.close()
+            except Exception:
+                pass
+            self._context = None
+            self._page = None
+
+        if self._browser is not None:
+            try:
+                await self._browser.close()
+            except Exception:
+                pass
+            self._browser = None
+
+        if self._playwright is not None:
+            try:
+                await self._playwright.stop()
+            except Exception:
+                pass
+            self._playwright = None
+
+    # -- 页面操作 --
 
     async def navigate(self, url: str) -> str:
-        """导航到指定页面"""
+        """导航到指定 URL"""
         try:
             await self.ensure_browser()
-            await self.page.goto(url)
+            assert self._page is not None
+            await self._page.goto(url)
             return f"已访问 {url}"
-        except Exception as e:
-            return f"导航失败: {str(e)}"
+        except Exception as exc:
+            return f"导航失败: {exc}"
 
     async def get_content(self) -> str:
-        """获取页面内容，限制在前5000字以内"""
+        """获取当前页面文本内容（最多 5000 字）"""
         try:
             await self.ensure_browser()
-            content = await self.page.inner_text("body")
+            assert self._page is not None
+            content = await self._page.inner_text("body")
             return content[:5000]
-        except Exception as e:
-            return f"读取内容失败: {str(e)}"
+        except Exception as exc:
+            return f"读取内容失败: {exc}"
 
     async def click(self, selector: str) -> str:
-        """点击页面元素"""
+        """点击匹配 CSS 选择器的元素"""
         try:
             await self.ensure_browser()
-            await self.page.click(selector)
+            assert self._page is not None
+            await self._page.click(selector)
             return f"已点击元素: {selector}"
-        except Exception as e:
-            return f"点击失败: {str(e)}"
+        except Exception as exc:
+            return f"点击失败: {exc}"
 
     async def fill(self, selector: str, text: str) -> str:
-        """在页面元素中输入文本"""
+        """在输入框中填入文本"""
         try:
             await self.ensure_browser()
-            await self.page.fill(selector, text)
+            assert self._page is not None
+            await self._page.fill(selector, text)
             return f"已在 {selector} 输入: {text}"
-        except Exception as e:
-            return f"输入失败: {str(e)}"
+        except Exception as exc:
+            return f"输入失败: {exc}"

@@ -1,7 +1,7 @@
 [project]
 name = "computer-use"
 version = "0.1.0"
-description = "Add your description here"
+description = "MCP 服务器项目 - 提供浏览器自动化、屏幕截图和 AI 图像分析等能力"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -15,4 +15,10 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ["mcp_server", "shared"]
+packages = ["mcp_server", "shared", "host"]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.1.0",
+    "ruff>=0.15.14",
+]
